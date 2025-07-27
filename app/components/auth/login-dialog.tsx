@@ -42,23 +42,40 @@ export default function LoginDialog({
 
   const handleLogin = async () => {
     try {
-      // ✅ 관리자 계정 확인
-      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        const adminUser = {
-          name: "관리자",
-          email: ADMIN_EMAIL,
-          role: "admin",
-        };
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("currentUser", JSON.stringify(adminUser));
-        localStorage.setItem("isAdmin", "true");
-        showAlert("success", "관리자 로그인 성공!");
-        setTimeout(() => {
-          onLoginSuccess(adminUser, true);
-          resetForm();
-        }, 1000);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+  
+      if (error) {
+        showAlert("error", "로그인 실패: " + error.message);
         return;
       }
+  
+      if (data.session) {
+        const user = data.session.user;
+        const isAdmin = user.email === "admin@admin.kr";
+  
+        onLoginSuccess(
+          {
+            name: user.user_metadata?.name || "사용자",
+            email: user.email,
+          },
+          isAdmin
+        );
+  
+        showAlert("success", "로그인 성공!");
+        
+        // ✅ 모달 닫기 추가
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 500);
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert("error", "알 수 없는 오류가 발생했습니다.");
+    }
+  };
 
       // ✅ 일반 사용자 로그인 (Supabase)
       const { data, error } = await supabase.auth.signInWithPassword({
